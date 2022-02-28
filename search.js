@@ -28,6 +28,20 @@ const {argv} = require('yargs')
   choices: ['modules','settings'], 
   description: 'Field type to look up'
 })
+.option('timeout', {
+  type: 'int',
+  default: 1000,
+  description: 'Timeout per request, in ms; 0 means no timeout'
+})
+.option('cursor', {
+  type: 'string',
+  description: 'A cursor to start querying with'
+})
+.option('live', {
+  type: Boolean,
+  default: false,
+  description: 'If true, output results one page at a time; helpful for debugging'
+})
 .demandOption(['account','apikey'],"You must provide at least API key and account id")
 
 const STARTSWITH = argv['starts']
@@ -35,6 +49,9 @@ const CONTAINS = argv['contains']
 const ACCOUNTID =  argv['account'] 
 const APIKEY =  argv['apikey'] 
 const FIELDTYPE =  argv['field']
+const TIMEOUT =  argv['timeout']
+const CURSOR =  argv['cursor']
+const LIVERESULTS =  argv['live']
 
 if(! (ACCOUNTID && APIKEY)) {
   console.log("Error account or apikey are blank")
@@ -91,7 +108,7 @@ async function doRequest(cursor) {
       query: gql,
       variables: ""
     },
-    timeout: 1000, // default is `0` (no timeout)
+    timeout: TIMEOUT, // default is `0` (no timeout)
 
   }
 
@@ -165,27 +182,38 @@ console.log(table.toString());
 async function run() {
 
   let tryNextPage=true
-  let cursor = null
+  let cursor = CURSOR
   let allResults=[]
 
-  process.stdout.write("\nGathering data ..");
+  process.stdout.write("\nGathering data (timeout=" + TIMEOUT + ") ..");
 
   while(tryNextPage) {
-    process.stdout.write(".");
-    let result = await(doRequest(cursor))
-    if(result.cursor) {
-      cursor = result.cursor
-    } else {
-      tryNextPage = false
-    }
+    let result = await (doRequest(cursor))
+    if (result) {
+      if (result.cursor) {
+        cursor = result.cursor
+      } else {
+        tryNextPage = false
+      }
+      if (LIVERESULTS && result.results.length > 0) {
+        process.stdout.write("\nResults for cursor " + cursor + "\n");
+        drawTable(result.results)
+      } else {
+        process.stdout.write(".");
+      }
 
-    allResults=allResults.concat(result.results)
+      allResults = allResults.concat(result.results)
+    } else {
+      process.stderr.write("\nSkipping failed request using cursor " + cursor)
+    }
   }
 
   console.log(`\n\nAccount: ${ACCOUNTID}`)
   console.log(FILTERTEXT)
   console.log(`Hosts: ${allResults.length}`)
   drawTable(allResults)
+
+  // TOO dump CSV and JSON files
 }
 
 
