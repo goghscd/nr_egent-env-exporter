@@ -212,8 +212,6 @@ async function run() {
   console.log(FILTERTEXT)
   console.log(`Hosts: ${allResults.length}`)
   drawTable(allResults)
-
-  // TOO dump CSV and JSON files
 }
 
 
