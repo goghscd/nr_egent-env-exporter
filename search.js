@@ -215,7 +215,8 @@ async function run() {
   let cursor = CURSOR
   let allResults=[]
 
-  process.stdout.write(`\nGathering data (timeout=${TIMEOUT}) ..`);
+  let cursorInfo = cursor ? `, cursor=${cursor}` : ``;
+  process.stdout.write(`\nGathering data (timeout=${TIMEOUT}${cursorInfo})\n..`);
 
   // Bail gracefully for Ctrl+C
   process.on('SIGINT', function() {
@@ -232,9 +233,8 @@ async function run() {
     let result = await (doRequest(cursor))
     pageCount++;
     if (result) {
-      if (result.cursor) {
-        cursor = result.cursor
-      } else {
+      cursor = result.cursor
+      if (!cursor) {
         tryNextPage = false
       }
       if (LIVERESULTS && result.results.length > 0) {
@@ -264,7 +264,12 @@ async function run() {
         `${OUTFILE}.tsv`,
         tableAsTabSeparatedValues(allResults)
     );
-    process.stdout.write(`\nWrote results to ${OUTFILE}[.json|.tsv]\n`);
+    process.stdout.write(`\nWrote results to ${OUTFILE}{.json,.tsv}\n`);
+  }
+
+  if (cursor) {
+    // Print this at the end in case the terminal buffer is full of table results
+    process.stderr.write(`\nExited while processing cursor ${cursor}`)
   }
 }
 
