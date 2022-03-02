@@ -149,46 +149,63 @@ async function doRequest(cursor) {
 
 }
 
-function drawTable(data) {
-  
-
-
-let headerFields=[ 'Host', 'Name', 'Language','Application IDs']
-switch(FIELDTYPE) {
-  case "modules":
-    headerFields=headerFields.concat(['Jar','Version'])
-    break;
-  case "settings":
-    headerFields=headerFields.concat(['Attribute','Value'])
-    break;
-}
-// instantiate
-var table = new Table({
-  head: headerFields
-});
-
-data.forEach((item)=>{
-  if(item.applicationGuids.length > 1){
-    console.log(`Unexpected multiple application GUIDS - not currently handling those sorry!`,item)
-  }
-  switch(FIELDTYPE) {
+function makeTable(data, tableStyle) {
+  let headerFields = ['Host', 'Name', 'Language', 'Application IDs']
+  switch (FIELDTYPE) {
     case "modules":
-      item.loadedModules.forEach((module)=>{
-        table.push([ item.details.host,  item.details.name, item.details.language, item.applicationGuids[0], module.name, module.version])
-      })
+      headerFields = headerFields.concat(['Jar', 'Version'])
       break;
     case "settings":
-      item.attributes.forEach((attr)=>{
-        table.push([item.details.host,  item.details.name, item.details.language, item.applicationGuids[0], attr.attribute, attr.value])
-      })
+      headerFields = headerFields.concat(['Attribute', 'Value'])
       break;
   }
 
-  
-})
-  
+  let tableOptions = {
+    head: headerFields
+  };
+  if (tableStyle) {
+    tableOptions.style = tableStyle;
+  }
+  let table = new Table(tableOptions);
 
-console.log(table.toString());
+  data.forEach((item) => {
+    if (item.applicationGuids.length > 1) {
+      console.log(`Unexpected multiple application GUIDS - not currently handling those sorry!`, item)
+    }
+    switch (FIELDTYPE) {
+      case "modules":
+        item.loadedModules.forEach((module) => {
+          table.push([item.details.host, item.details.name, item.details.language, item.applicationGuids[0], module.name, module.version])
+        })
+        break;
+      case "settings":
+        item.attributes.forEach((attr) => {
+          table.push([item.details.host, item.details.name, item.details.language, item.applicationGuids[0], attr.attribute, attr.value])
+        })
+        break;
+    }
+  })
+  return table;
+}
+
+function drawTable(data) {
+  let table = makeTable(data);
+  console.log(table.toString());
+}
+
+function tableAsTabSeparatedValues(data) {
+  let table = makeTable(data, {
+    "padding-left": 0,
+    "padding-right": 0,
+    head: [], //disable colors in header cells
+    border: [], //disable colors for the border
+  });
+
+  table.options.chars = { 'top': '' , 'top-mid': '' , 'top-left': '' , 'top-right': ''
+         , 'bottom': '' , 'bottom-mid': '' , 'bottom-left': '' , 'bottom-right': ''
+         , 'left': '' , 'left-mid': '' , 'mid': '' , 'mid-mid': ''
+         , 'right': '' , 'right-mid': '' , 'middle': '\t' };
+  return table.toString();
 }
 
 
@@ -237,7 +254,11 @@ async function run() {
         OUTFILE,
         JSON.stringify(allResults, null, 2)
     );
-    process.stdout.write(`\nWrote results to ${OUTFILE}\n`);
+    fs.writeFileSync(
+        `${OUTFILE}.tsv`,
+        tableAsTabSeparatedValues(allResults)
+    );
+    process.stdout.write(`\nWrote results to ${OUTFILE}[.tsv]\n`);
   }
 }
 
