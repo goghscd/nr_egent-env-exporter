@@ -238,7 +238,7 @@ async function run() {
         tryNextPage = false
       }
       if (LIVERESULTS && result.results.length > 0) {
-        process.stdout.write(`\nResults for cursor ${cursor}`);
+        process.stdout.write(`\nResults for cursor ${cursor}\n`);
         drawTable(result.results)
       } else {
         process.stdout.write(".");
