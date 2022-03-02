@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const Table = require('cli-table3');
+const fs = require('fs');
 
 const {argv} = require('yargs')
 .option('account', {
@@ -37,10 +38,20 @@ const {argv} = require('yargs')
   type: 'string',
   description: 'A cursor to start querying with'
 })
-.option('live', {
-  type: Boolean,
+.option('liveresults', {
+  type: 'boolean',
   default: false,
   description: 'If true, output results one page at a time; helpful for debugging'
+})
+.option('out', {
+  type: 'string',
+  normalize: true,
+  description: 'Path to an output file for results'
+})
+.option('limit', {
+  type: 'number',
+  default: 0,
+  description: 'Stop querying after this many pages of results have been fetched; helpful for debugging'
 })
 .demandOption(['account','apikey'],"You must provide at least API key and account id")
 
@@ -51,7 +62,9 @@ const APIKEY =  argv['apikey']
 const FIELDTYPE =  argv['field']
 const TIMEOUT =  argv['timeout']
 const CURSOR =  argv['cursor']
-const LIVERESULTS =  argv['live']
+const LIVERESULTS =  argv['liveresults']
+const OUTFILE =  argv['out']
+const LIMIT =  argv['limit']
 
 if(! (ACCOUNTID && APIKEY)) {
   console.log("Error account or apikey are blank")
@@ -185,10 +198,16 @@ async function run() {
   let cursor = CURSOR
   let allResults=[]
 
-  process.stdout.write("\nGathering data (timeout=" + TIMEOUT + ") ..");
+  process.stdout.write(`\nGathering data (timeout=${TIMEOUT}) ..`);
 
+  let pageCount = 0;
   while(tryNextPage) {
+    if (LIMIT && pageCount >= LIMIT) {
+      process.stdout.write(`\nLimit (${LIMIT}) hit, stopping`);
+      break;
+    }
     let result = await (doRequest(cursor))
+    pageCount++;
     if (result) {
       if (result.cursor) {
         cursor = result.cursor
@@ -196,7 +215,7 @@ async function run() {
         tryNextPage = false
       }
       if (LIVERESULTS && result.results.length > 0) {
-        process.stdout.write("\nResults for cursor " + cursor + "\n");
+        process.stdout.write(`\nResults for cursor ${cursor}`);
         drawTable(result.results)
       } else {
         process.stdout.write(".");
@@ -204,7 +223,7 @@ async function run() {
 
       allResults = allResults.concat(result.results)
     } else {
-      process.stderr.write("\nSkipping failed request using cursor " + cursor)
+      process.stderr.write(`\nSkipping failed request using cursor ${cursor}`)
     }
   }
 
@@ -213,7 +232,13 @@ async function run() {
   console.log(`Hosts: ${allResults.length}`)
   drawTable(allResults)
 
-  // TOO dump CSV and JSON files
+  if (OUTFILE) {
+    fs.writeFileSync(
+        OUTFILE,
+        JSON.stringify(allResults, null, 2)
+    );
+    process.stdout.write(`\nWrote results to ${OUTFILE}\n`);
+  }
 }
 
 
