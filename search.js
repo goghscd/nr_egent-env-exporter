@@ -217,6 +217,11 @@ async function run() {
 
   process.stdout.write(`\nGathering data (timeout=${TIMEOUT}) ..`);
 
+  // Bail gracefully for Ctrl+C
+  process.on('SIGINT', function() {
+    tryNextPage = false;
+  });
+
   let pageCount = 0;
   while(tryNextPage) {
     if (LIMIT && pageCount >= LIMIT) {
@@ -240,7 +245,7 @@ async function run() {
 
       allResults = allResults.concat(result.results)
     } else {
-      process.stderr.write(`\nSkipping failed request using cursor ${cursor}`)
+      process.stderr.write(`\nRetrying failed request using cursor ${cursor}`)
     }
   }
 
