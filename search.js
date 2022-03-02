@@ -220,6 +220,7 @@ async function run() {
   // Bail gracefully for Ctrl+C
   process.on('SIGINT', function() {
     tryNextPage = false;
+    process.stdout.write(`\nStopping after results of cursor ${cursor}`)
   });
 
   let pageCount = 0;
