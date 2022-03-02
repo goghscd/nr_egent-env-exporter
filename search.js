@@ -2,7 +2,7 @@
 
 const axios = require('axios');
 const Table = require('cli-table3');
-const fs = require('fs');
+const fsPromises = require('fs/promises');
 
 const {argv} = require('yargs')
 .option('account', {
@@ -250,20 +250,26 @@ async function run() {
     }
   }
 
+  let writePromises = [];
+  if (OUTFILE) {
+    let jsonWritePromise = fsPromises.writeFile(
+        `${OUTFILE}.tsv`,
+        tableAsTabSeparatedValues(allResults)
+    );
+    let tsvWritePromise = fsPromises.writeFile(
+        `${OUTFILE}.json`,
+        JSON.stringify(allResults, null, 2)
+    );
+    writePromises.push(jsonWritePromise, tsvWritePromise)
+  }
+
   console.log(`\n\nAccount: ${ACCOUNTID}`)
   console.log(FILTERTEXT)
   console.log(`Hosts: ${allResults.length}`)
   drawTable(allResults)
 
-  if (OUTFILE) {
-    fs.writeFileSync(
-        `${OUTFILE}.json`,
-        JSON.stringify(allResults, null, 2)
-    );
-    fs.writeFileSync(
-        `${OUTFILE}.tsv`,
-        tableAsTabSeparatedValues(allResults)
-    );
+  if (writePromises) {
+    await Promise.all(writePromises);
     process.stdout.write(`\nWrote results to ${OUTFILE}{.json,.tsv}\n`);
   }
 
