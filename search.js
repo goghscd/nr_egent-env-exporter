@@ -46,7 +46,7 @@ const {argv} = require('yargs')
 .option('out', {
   type: 'string',
   normalize: true,
-  description: 'Path to an output file for results'
+  description: 'Path to output files for results (both JSON and TSV); file extension should be omitted'
 })
 .option('limit', {
   type: 'number',
@@ -256,14 +256,14 @@ async function run() {
 
   if (OUTFILE) {
     fs.writeFileSync(
-        OUTFILE,
+        `${OUTFILE}.json`,
         JSON.stringify(allResults, null, 2)
     );
     fs.writeFileSync(
         `${OUTFILE}.tsv`,
         tableAsTabSeparatedValues(allResults)
     );
-    process.stdout.write(`\nWrote results to ${OUTFILE}[.tsv]\n`);
+    process.stdout.write(`\nWrote results to ${OUTFILE}[.json|.tsv]\n`);
   }
 }
 
